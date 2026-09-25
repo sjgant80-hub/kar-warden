@@ -1,0 +1,22 @@
+name: gate
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: unit tests
+        run: node --test kernel.test.mjs
+      - name: mutation gate (witness — proof-of-play, not test-theatre)
+        run: node tools/witness.mjs mutate kernel.mjs --timeout 90000 --cap 900 --baseline witness.baseline.json --test node --test kernel.test.mjs
+      - name: page fixpoint (the live page IS the gated kernel — no drift)
+        run: |
+          node make-page.mjs
+          git diff --exit-code index.html

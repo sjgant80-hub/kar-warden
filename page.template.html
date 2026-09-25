@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kar-Warden — provable AI-component integrity</title>
+<meta name="description" content="Declare what an AI component is allowed to be — its baseline config, capabilities, files, invariants. Kar-Warden proves, with no LLM judge, whether it still is: INTACT, DRIFTED or BREACHED, with a tamper-evident log and a re-runnable signed receipt. Runs entirely in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<!--SCHEMA-->
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1b222c; --ink:#e7ecf3; --muted:#98a3b3; --faint:#6b7686;
+  --line:#242c38; --line2:#2f3846; --accent:#6ea8fe; --accent-ink:#0b1220;
+  --intact:#3fb950; --drift:#d6a533; --breach:#f85149; --unrep:#8b949e;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --disp:'Fraunces',Georgia,serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;
+  font-size:15px;-webkit-font-smoothing:antialiased;padding:0}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px}
+a{color:var(--accent)}
+h1,h2,h3{font-family:var(--disp);font-weight:600;text-wrap:balance;margin:0}
+code,kbd,.mono{font-family:var(--mono)}
+.hero{padding:56px 0 28px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.hero h1{font-size:clamp(34px,6vw,56px);line-height:1.02;letter-spacing:-.01em}
+.hero p.lede{font-size:clamp(16px,2.4vw,19px);color:var(--muted);max-width:60ch;margin:18px 0 0}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line2);
+  border-radius:999px;padding:5px 11px;background:var(--panel)}
+.chip b{color:var(--ink);font-weight:500}
+section{padding:26px 0;border-top:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.sec-head h2{font-size:23px}
+.sec-num{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.sec-sub{color:var(--muted);max-width:66ch;margin:0 0 18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.kv{font-family:var(--mono);font-size:12.5px;color:var(--muted);word-break:break-all;line-height:1.7}
+.kv b{color:var(--ink);font-weight:500}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+button{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink);background:var(--panel2);
+  border:1px solid var(--line2);border-radius:9px;padding:8px 13px;cursor:pointer;transition:.12s}
+button:hover{border-color:var(--accent);color:#fff}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.primary:hover{filter:brightness(1.08);color:var(--accent-ink)}
+button.ghost{background:transparent}
+button:disabled{opacity:.45;cursor:not-allowed;border-color:var(--line2);color:var(--muted)}
+.verdict{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);margin-top:2px}
+.dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 0 4px rgba(255,255,255,.04)}
+.verdict .st{font-family:var(--disp);font-size:26px;font-weight:600;letter-spacing:.01em}
+.verdict .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;text-align:right}
+.st-INTACT{color:var(--intact)} .bg-INTACT{background:var(--intact)}
+.st-DRIFTED{color:var(--drift)} .bg-DRIFTED{background:var(--drift)}
+.st-BREACHED{color:var(--breach)} .bg-BREACHED{background:var(--breach)}
+.st-UNREPORTED{color:var(--unrep)} .bg-UNREPORTED{background:var(--unrep)}
+.broken{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:7px}
+.broken li{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:12.5px;
+  padding:8px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--line)}
+.sev{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:5px;flex:none}
+.sev-severe{background:rgba(248,81,73,.15);color:var(--breach);border:1px solid rgba(248,81,73,.4)}
+.sev-warn{background:rgba(214,165,51,.14);color:var(--drift);border:1px solid rgba(214,165,51,.4)}
+.broken .nm{color:var(--ink)} .broken .ex{color:var(--faint);margin-left:auto;text-align:right}
+.ok-line{color:var(--intact);font-family:var(--mono);font-size:13px;margin-top:14px}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;min-width:340px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:400}
+td.mono{font-family:var(--mono);font-size:12.5px}
+.pill{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 9px;border-radius:999px;display:inline-block}
+.pill-INTACT{background:rgba(63,185,80,.13);color:var(--intact)}
+.pill-DRIFTED{background:rgba(214,165,51,.13);color:var(--drift)}
+.pill-BREACHED{background:rgba(248,81,73,.13);color:var(--breach)}
+.pill-UNREPORTED{background:rgba(139,148,158,.15);color:var(--unrep)}
+.report{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-family:var(--mono);font-size:13px}
+.report .n{font-size:22px;font-weight:500;font-family:var(--disp)}
+.report .n.zero{color:var(--faint)}
+.report div span{display:block;color:var(--faint);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.chain{display:flex;flex-direction:column;gap:0;margin-top:6px}
+.entry{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-family:var(--mono);font-size:12px}
+.entry.bad{border-left-color:var(--breach);background:rgba(248,81,73,.05)}
+.entry .row1{display:flex;gap:10px;align-items:center;color:var(--ink)}
+.entry .h{color:var(--faint);word-break:break-all;margin-top:4px}
+.drop{border:1.5px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--muted);
+  transition:.12s;cursor:pointer;font-size:13px}
+.drop.over{border-color:var(--accent);background:rgba(110,168,254,.06);color:var(--ink)}
+textarea{width:100%;min-height:90px;background:var(--bg);color:var(--ink);border:1px solid var(--line2);
+  border-radius:9px;padding:11px;font-family:var(--mono);font-size:12px;resize:vertical}
+.result{margin-top:12px;padding:12px 14px;border-radius:9px;font-family:var(--mono);font-size:13px;border:1px solid var(--line2);background:var(--panel2)}
+.result.good{border-color:rgba(63,185,80,.4)} .result.bad{border-color:rgba(248,81,73,.4)}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+@media(max-width:720px){.how{grid-template-columns:1fr}}
+.how .step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.how .step .n{font-family:var(--mono);color:var(--accent);font-size:12px}
+.how .step h3{font-size:16px;margin:8px 0 6px;font-family:var(--sans);font-weight:600}
+.how .step p{margin:0;color:var(--muted);font-size:13.5px}
+details{border:1px solid var(--line);border-radius:10px;padding:0 16px;margin-bottom:10px;background:var(--panel)}
+details summary{cursor:pointer;padding:14px 0;font-weight:500;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'+ ';color:var(--accent);font-family:var(--mono)}
+details[open] summary::before{content:'– '}
+details .a{color:var(--muted);padding:0 0 16px;font-size:14px;max-width:70ch}
+footer{border-top:1px solid var(--line);padding:30px 0 60px;color:var(--faint);font-size:13px}
+footer .mono{font-size:12px;color:var(--faint)}
+.foot-links{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Kar-Warden · provable integrity</div>
+    <h1>Declare what an AI component is allowed to be. Then prove it still is.</h1>
+    <p class="lede">A watchdog with no LLM judge. You write a component's <b>warrant</b> — its baseline config, the capabilities it may hold, the files it must carry, the invariants that must stay true. Warden checks the component's observed state against it and returns a verdict: <span class="st-INTACT">INTACT</span>, <span class="st-DRIFTED">DRIFTED</span>, or <span class="st-BREACHED">BREACHED</span> — naming exactly what broke. Tamper-evident log, re-runnable signed receipt. Runs entirely in your browser.</p>
+    <div class="badges">
+      <span class="chip"><b>No LLM judge</b> — pure determinism</span>
+      <span class="chip"><b>Third-party re-runnable</b> receipts</span>
+      <span class="chip">One <b>severe</b> break = BREACHED, unaveraged</span>
+      <span class="chip">Mutation-gated kernel · <b id="gateScore">witness</b></span>
+    </div>
+  </header>
+
+  <section id="check">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The check</h2></div>
+    <p class="sec-sub">A live component, <code>agent-alpha</code>, with a warrant on the left and its observed state on the right. Inject a change and watch the verdict move. Everything here is the real kernel running in your browser — the same code the gate proves.</p>
+    <div class="grid2">
+      <div class="panel">
+        <div class="label">Warrant — what it's allowed to be</div>
+        <div class="kv" id="warrantView"></div>
+      </div>
+      <div class="panel">
+        <div class="label">Observed — what's actually running</div>
+        <div class="kv" id="observedView"></div>
+      </div>
+    </div>
+    <div class="controls" style="margin-top:14px">
+      <button data-mut="config">Change config hash</button>
+      <button data-mut="cap">Add ungranted capability</button>
+      <button data-mut="sandbox">Break <code>sandbox-on</code> (severe)</button>
+      <button data-mut="telemetry">Break <code>telemetry-off</code> (warn)</button>
+      <button data-mut="file">Remove a required file</button>
+      <button data-mut="extra">Add an undeclared file</button>
+      <button class="ghost" id="resetBtn">Reset to intact</button>
+    </div>
+    <div id="verdictBox"></div>
+    <ul class="broken" id="brokenList"></ul>
+  </section>
+
+  <section id="fleet">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The fleet</h2></div>
+    <p class="sec-sub">One warden, many components. <code>monitorStatus</code> folds every warrant + observation into one report — the worst status wins, and a component that should have reported but didn't is <span class="st-UNREPORTED">UNREPORTED</span>, never quietly counted as fine.</p>
+    <div class="panel">
+      <div class="tscroll">
+        <table id="fleetTable">
+          <thead><tr><th>Component</th><th>Status</th><th>Broken</th><th>Severe</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="report" id="fleetReport"></div>
+    </div>
+  </section>
+
+  <section id="log">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The log</h2></div>
+    <p class="sec-sub">Every non-intact verdict can be logged. Each entry is hash-chained to the one before it, so the record itself is tamper-evident — edit any past entry and <code>verifyChain</code> names exactly where the chain breaks.</p>
+    <div class="panel">
+      <div class="controls" style="margin-bottom:14px">
+        <button id="logCurrent">Log the current verdict</button>
+        <button class="ghost" id="tamperLog">Tamper with entry #0</button>
+        <button class="primary" id="verifyChainBtn">Verify chain</button>
+      </div>
+      <div class="chain" id="chainView"><span class="faint mono">No anomalies logged yet.</span></div>
+      <div id="chainResult"></div>
+    </div>
+  </section>
+
+  <section id="receipt">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The receipt</h2></div>
+    <p class="sec-sub">A verdict you can hand to anyone. The receipt carries the warrant, the observed state and the verdict, self-hashed and optionally Ed25519-signed. A third party doesn't trust your word — they <b>re-run</b> the check on the receipt's own inputs. A verdict forged to say INTACT is caught, even if its hash is recomputed.</p>
+    <div class="grid2">
+      <div class="panel">
+        <div class="label">Issue for the current verdict</div>
+        <div class="controls">
+          <button class="primary" id="issueBtn">Issue signed receipt</button>
+          <button class="ghost" id="downloadBtn" disabled>Download</button>
+        </div>
+        <div id="issueResult"></div>
+      </div>
+      <div class="panel">
+        <div class="label">Verify a receipt someone sent you</div>
+        <div class="drop" id="drop">Drop a <code>.json</code> receipt here, or click to choose</div>
+        <textarea id="pasteArea" placeholder="…or paste receipt JSON" spellcheck="false"></textarea>
+        <div class="controls" style="margin-top:10px"><button id="verifyReceiptBtn">Verify receipt</button></div>
+        <div id="verifyResult"></div>
+        <input type="file" id="fileIn" accept="application/json,.json" class="hidden">
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="sec-head"><span class="sec-num">05</span><h2>How it works</h2></div>
+    <div class="how">
+      <div class="step"><div class="n">01 · declare</div><h3>Write the warrant</h3><p>Pin the baseline: the config hash, the capabilities the component may hold, the files it must carry with their hashes, and named invariants at <code>warn</code> or <code>severe</code>.</p></div>
+      <div class="step"><div class="n">02 · check</div><h3>Compare observed state</h3><p><code>verifyIntegrity</code> compares observed against the warrant. One severe break — a changed config, an ungranted capability, a missing file, a severe invariant — is a BREACH, and no amount of passing checks averages it away.</p></div>
+      <div class="step"><div class="n">03 · prove</div><h3>Log and receipt it</h3><p>Append the verdict to a hash-chained log and issue a signed receipt. Anyone can re-run the check and confirm the verdict — no trust in the issuer, no model in the loop.</p></div>
+    </div>
+    <div style="margin-top:22px">
+      <details><summary>Is this an antivirus or a runtime sandbox?</summary><div class="a">No. Warden doesn't sit in the execution path or block anything. It's an <b>attestation</b> layer: you give it a declared warrant and an observed snapshot, and it produces a provable verdict about whether they match. It answers "did this component silently change or exceed its authority?" — deterministically and re-runnably.</div></details>
+      <details><summary>Where does the observed state come from?</summary><div class="a">From wherever you inventory a component — its config file hashed, its granted scopes listed, its files hashed, its runtime invariants read as booleans. Warden is the pure comparison and the proof; collecting the snapshot is the caller's job, which keeps the kernel deterministic and gate-able.</div></details>
+      <details><summary>Why no LLM judge?</summary><div class="a">Because a judge you can't re-run isn't proof. Every verdict here is a deterministic comparison over hashes and booleans, so a third party gets the same answer byte-for-byte. That's the estate's wedge: provable, accountable AI — adversarial mutation proof of the code, and third-party re-run of the result.</div></details>
+      <details><summary>Is my data sent anywhere?</summary><div class="a">No. The kernel is inlined in this page and runs entirely in your browser. Nothing you type is uploaded; the signing uses your browser's own WebCrypto. Close the tab and it's gone.</div></details>
+    </div>
+  </section>
+
+  <footer>
+    <div>Kar-Warden — an integrity gate for AI components.</div>
+    <div class="mono" id="footGate" style="margin-top:6px"></div>
+    <div class="mono" style="margin-top:6px">Built by Kar (karma-didy) on the FallForge estate. Konomi.</div>
+    <div class="foot-links">
+      <a href="https://github.com/sjgant80-hub/kar-warden">Source &amp; the mutation gate</a>
+      <a href="llms.txt">llms.txt</a>
+    </div>
+  </footer>
+
+</div>
+<script type="module">
+//<!--KERNEL_AND_UI-->
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+[
+  {
+    "mutation": "< → <=",
+    "snippet": "for (let t = 16; t < 64; t++) {",
+    "reason": "Genuinely equivalent: the mutated bound runs one extra SHA-256 message-schedule iteration that writes w[64], out of bounds on the fixed Uint32Array(64) — typed-array OOB writes are silently discarded, the loop body has no other side effect, and nothing reads past w[63]. Behaviour is bit-identical; the FIPS-180 known-answer vectors pass either way (see the sha256 KAT test)."
+  }
+]

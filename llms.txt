@@ -1,0 +1,24 @@
+# Kar-Warden
+
+> An integrity gate for AI components, with no LLM judge. Declare a component's warrant (baseline config
+> hash, allowed capabilities, required files, named invariants); present its observed state; get a
+> deterministic, re-runnable verdict — INTACT, DRIFTED or BREACHED — naming exactly what broke. Runs
+> entirely client-side.
+
+## What it is
+- A pure, gate-proven kernel + a single-file page that inlines it. No backend, no data leaves the browser.
+- One severe break (changed config, ungranted capability, missing file, failed severe invariant) is a
+  BREACH and cannot be averaged away by passing checks.
+
+## Core functions
+- verifyIntegrity(warrant, observed) -> verdict { status, broken[], brokenCount, severeCount }
+- monitorStatus(warrants[], observations[]) -> StatusReport (worst status wins; missing = UNREPORTED)
+- appendAnomaly(chain, entry) / verifyChain(chain) -> hash-chained tamper-evident log
+- wardenReceipt(...) / verifyWardenReceipt(r) -> portable receipt a third party re-runs to reproduce the verdict
+
+## Proof
+- Mutation gate (witness): 72/73 killed, score 0.986, 1 reviewed-equivalent.
+- The live page is generated from the kernel and diff-checked in CI, so it cannot drift from the proven code.
+
+## Credit
+Built by Kar (karma-didy) on the FallForge estate. Konomi.
